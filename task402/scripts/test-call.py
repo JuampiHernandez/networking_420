@@ -6,10 +6,19 @@ import sys
 import time
 import urllib.request
 
-KEY = os.environ.get("ELEVENLABS_API_KEY", "sk_3c08657d2bc2dca9f5616ff6817f6e0f4fbc25fb041f0df5")
-AGENT = os.environ.get("ELEVENLABS_AGENT_ID", "agent_9201ktf187y3fgg9dzq4q9vnbf54")
-PHONE = os.environ.get("ELEVENLABS_AGENT_PHONE_NUMBER_ID", "phnum_4101ktf08tc7fdxsgsnrn5b41kxc")
-TO = os.environ.get("DEMO_CONTACT_PHONE", "+13475831054")
+
+def require(name: str) -> str:
+    value = os.environ.get(name, "").strip()
+    if not value:
+        print(f"missing required env var: {name}", file=sys.stderr)
+        sys.exit(1)
+    return value
+
+
+KEY = require("ELEVENLABS_API_KEY")
+AGENT = require("ELEVENLABS_AGENT_ID")
+PHONE = require("ELEVENLABS_AGENT_PHONE_NUMBER_ID")
+TO = require("DEMO_CONTACT_PHONE")
 
 body = {
     "agent_id": AGENT,
