@@ -11,9 +11,9 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Task402 — An agent with a wallet that networks for you",
+  title: "Relay — An agent with a wallet that networks for you",
   description:
-    "An autonomous networking agent on Base. Give it a goal + USDC budget; it finds people, pays per lookup via x402, and reaches out by email or AI voice call.",
+    "Relay is an autonomous networking agent on Base. Give it a goal and USDC budget — it finds people, pays per action via x402, and reaches out by email or AI voice call.",
 };
 
 export default function RootLayout({

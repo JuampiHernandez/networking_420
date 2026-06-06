@@ -16,6 +16,36 @@ export type PaidToolResult = {
   error?: string;
 };
 
+const X402_RETRIES = 3;
+
+function sleep(ms: number) {
+  return new Promise((r) => setTimeout(r, ms));
+}
+
+function formatHttpError(status: number, data: unknown): string {
+  if (data && typeof data === "object" && "error" in data) {
+    const detail = String((data as { error: unknown }).error);
+    return `HTTP ${status}: ${detail}`;
+  }
+  return `HTTP ${status}`;
+}
+
+function decodePaymentHeader(header: string | null) {
+  if (!header) return undefined;
+  try {
+    return decodeXPaymentResponse(header);
+  } catch {
+    try {
+      return JSON.parse(Buffer.from(header, "base64").toString()) as {
+        transaction?: string;
+        payer?: string;
+      };
+    } catch {
+      return undefined;
+    }
+  }
+}
+
 /**
  * Agent-side x402 buyer. Calls a paid tool endpoint, handling the
  * 402 -> sign payment -> retry -> unlock resource flow.
@@ -42,25 +72,48 @@ export async function callPaidTool(
         signer,
         toUsdcUnits(maxPaymentUsdc),
       );
-      const res = await fetchWithPay(url, {
-        method: tool.method,
-        headers: baseHeaders,
-        body,
-      });
-      const data = await res.json().catch(() => ({}));
-      const header = res.headers.get("x-payment-response");
-      const decoded = header ? decodeXPaymentResponse(header) : undefined;
-      return {
-        ok: res.ok,
-        data,
-        txHash: decoded?.transaction,
-        payer: decoded?.payer,
-        network: X402_NETWORK,
-        priceUsdc: tool.price,
-        simulated: false,
-        challenged402: true,
-        error: res.ok ? undefined : `HTTP ${res.status}`,
-      };
+
+      let lastResult: PaidToolResult | undefined;
+      for (let attempt = 0; attempt < X402_RETRIES; attempt++) {
+        if (attempt > 0) await sleep(400 * attempt);
+
+        const res = await fetchWithPay(url, {
+          method: tool.method,
+          headers: baseHeaders,
+          body,
+        });
+        const data = await res.json().catch(() => ({}));
+        const decoded = decodePaymentHeader(res.headers.get("x-payment-response"));
+        const challenged402 = res.status === 402 || Boolean(decoded);
+
+        lastResult = {
+          ok: res.ok,
+          data,
+          txHash: decoded?.transaction,
+          payer: decoded?.payer,
+          network: X402_NETWORK,
+          priceUsdc: tool.price,
+          simulated: false,
+          challenged402,
+          error: res.ok ? undefined : formatHttpError(res.status, data),
+        };
+
+        if (res.ok) return lastResult;
+        // Facilitator settlement can fail transiently after a signed payment.
+        if (res.status !== 402 || attempt === X402_RETRIES - 1) break;
+      }
+
+      return (
+        lastResult ?? {
+          ok: false,
+          data: {},
+          network: X402_NETWORK,
+          priceUsdc: tool.price,
+          simulated: false,
+          challenged402: false,
+          error: "payment failed",
+        }
+      );
     } catch (err) {
       return {
         ok: false,
@@ -115,6 +168,17 @@ export async function callPaidTool(
     priceUsdc: tool.price,
     simulated: true,
     challenged402: challenged,
-    error: res.ok ? undefined : `HTTP ${res.status}`,
+    error: res.ok ? undefined : formatHttpError(res.status, data),
   };
+}
+
+export class ToolCallError extends Error {
+  readonly toolName: string;
+  readonly reported = true;
+
+  constructor(toolName: string, message: string) {
+    super(message);
+    this.name = "ToolCallError";
+    this.toolName = toolName;
+  }
 }

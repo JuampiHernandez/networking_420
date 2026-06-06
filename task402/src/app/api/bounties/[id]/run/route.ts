@@ -14,6 +14,10 @@ export async function POST(
   if (!bounty) {
     return NextResponse.json({ error: "Bounty not found" }, { status: 404 });
   }
+  if (bounty.status === "running") {
+    // Idempotent: duplicate clicks while a run is active should attach to SSE, not error.
+    return NextResponse.json({ started: true, bountyId: id, alreadyRunning: true });
+  }
   if (bounty.status !== "open" && bounty.status !== "rejected") {
     return NextResponse.json(
       { error: `Bounty must be funded/open to run (status: ${bounty.status})` },

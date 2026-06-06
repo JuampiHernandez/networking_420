@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
+import { RelayLogo } from "@/components/RelayLogo";
 import { useWallet } from "@/lib/wallet";
 import { shortAddr } from "@/lib/format";
 
@@ -48,48 +49,40 @@ export function Header() {
     }
   };
 
+  const nav = [
+    { label: "Product", href: "/#product" },
+    { label: "How it works", href: "/#how-it-works" },
+    { label: "APIs", href: "/services" },
+    { label: "Pricing", href: "/#pricing" },
+    { label: "Docs", href: "/services#how-agents-pay" },
+  ];
+
   return (
-    <header className="sticky top-0 z-40 border-b border-[var(--border)] bg-[rgba(6,8,13,0.8)] backdrop-blur-md">
+    <header className="sticky top-0 z-40 border-b border-[var(--border)] bg-[rgba(6,8,13,0.85)] backdrop-blur-md">
       <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-5 py-3">
-        <div className="flex items-center gap-6">
-          <Link href="/" className="flex items-center gap-2">
-            <span className="grid h-8 w-8 place-items-center rounded-lg bg-gradient-to-br from-[#3f8bff] to-[#22d3ee] font-bold text-[#04101f]">
-              4
-            </span>
-            <span className="text-lg font-bold tracking-tight">
-              Task<span className="text-[var(--accent-2)]">402</span>
-            </span>
-          </Link>
-          <nav className="hidden items-center gap-1 md:flex">
-            <Link
-              href="/services"
-              className="rounded-lg px-3 py-1.5 text-sm text-[var(--muted)] hover:text-[var(--text)]"
-            >
-              APIs
-            </Link>
-            <Link
-              href="/bounties"
-              className="rounded-lg px-3 py-1.5 text-sm text-[var(--muted)] hover:text-[var(--text)]"
-            >
-              Tasks
-            </Link>
-            <Link
-              href="/bounties/new"
-              className="rounded-lg px-3 py-1.5 text-sm text-[var(--muted)] hover:text-[var(--text)]"
-            >
-              New task
-            </Link>
+        <div className="flex items-center gap-8">
+          <RelayLogo />
+          <nav className="hidden items-center gap-1 lg:flex">
+            {nav.map((item) => (
+              <Link
+                key={item.href}
+                href={item.href}
+                className="rounded-lg px-3 py-1.5 text-sm text-[var(--muted)] transition hover:text-[var(--text)]"
+              >
+                {item.label}
+              </Link>
+            ))}
           </nav>
         </div>
 
         <div className="flex items-center gap-2">
           <span className="badge hidden sm:inline-flex">
-            <span className="h-2 w-2 rounded-full bg-[var(--accent-2)]" />
-            Base Sepolia
+            <span className="h-2 w-2 rounded-full bg-[var(--accent)]" />
+            Built on Base
           </span>
           {cfg && (
             <span
-              className="badge hidden lg:inline-flex"
+              className="badge hidden xl:inline-flex"
               title="On-chain settlement mode"
             >
               x402:{" "}
@@ -101,20 +94,6 @@ export function Header() {
                 }
               >
                 {cfg.chainMode === "real" ? "on-chain" : "sim"}
-              </span>
-            </span>
-          )}
-          {cfg && (
-            <span className="badge hidden lg:inline-flex" title="Agent reasoning">
-              LLM:{" "}
-              <span
-                className={
-                  cfg.llmMode === "real"
-                    ? "text-[var(--green)]"
-                    : "text-[var(--amber)]"
-                }
-              >
-                {cfg.llmMode === "real" ? "live" : "mock"}
               </span>
             </span>
           )}
@@ -211,9 +190,18 @@ export function Header() {
               )}
             </div>
           ) : (
-            <button className="btn btn-primary" onClick={w.login} disabled={!w.ready}>
-              {w.mode === "privy" ? "Login with Privy" : "Start demo"}
-            </button>
+            <>
+              <button
+                className="btn btn-ghost hidden px-3 py-2 text-sm sm:inline-flex"
+                onClick={w.login}
+                disabled={!w.ready}
+              >
+                Sign in
+              </button>
+              <Link href="/bounties/new" className="btn btn-primary px-4 py-2 text-sm">
+                Get started →
+              </Link>
+            </>
           )}
         </div>
       </div>

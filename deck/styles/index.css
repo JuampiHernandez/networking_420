@@ -1,0 +1,20 @@
+/* Hide the goto sidebar — keyboard `g` no longer opens a slide list overlay */
+#slidev-goto-dialog {
+  display: none !important;
+}
+
+/* Coinbase-style light slide canvas */
+.slidev-slide-container {
+  background: #ffffff !important;
+}
+
+/* Minimal nav: fade in on hover, no persistent chrome during presenting */
+.slidev-slide-container .absolute.bottom-0.left-0 {
+  opacity: 0 !important;
+  transition: opacity 0.25s ease;
+}
+
+.slidev-slide-container:hover .absolute.bottom-0.left-0,
+.slidev-slide-container .absolute.bottom-0.left-0:focus-within {
+  opacity: 1 !important;
+}

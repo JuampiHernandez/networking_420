@@ -1,7 +1,8 @@
 import { nanoid } from "nanoid";
 import { db } from "./store";
 import { emitEvent } from "./events";
-import { callPaidTool } from "./x402-buyer";
+import { callPaidTool, ToolCallError } from "./x402-buyer";
+import { sendOutreachEmail } from "./email";
 import { complete, llmLabel } from "./llm";
 import { TOOLS, type Contact, type EnrichedContact } from "./tools";
 import { getChainMode, getLlmMode, explorerTx } from "./config";
@@ -74,6 +75,29 @@ Write a short personalized email (subject + body, sign as "Your Networking Agent
   } catch {
     return mockOutreach(b, c);
   }
+}
+
+/**
+ * Meeting-confirmation email sent automatically after a call connects. The
+ * meeting link is a hardcoded demo link; swap MEETING_LINK for a real
+ * scheduler URL (Cal.com, Google Meet, etc.) when wiring up real booking.
+ */
+const MEETING_LINK = "https://meet.relay.dev/j/abc-defg-hij";
+const MEETING_WHEN = "Tuesday, June 10 at 3:00 PM ET (30 min)";
+
+function meetingConfirmationEmail(c: EnrichedContact): { subject: string; body: string } {
+  const first = c.name.split(" ")[0];
+  return {
+    subject: `Confirmed: our call on ${MEETING_WHEN.split(" at ")[0]}`,
+    body:
+      `Hi ${first},\n\n` +
+      `Great talking just now — thanks for taking the call! As discussed, I've locked in a time for us to connect:\n\n` +
+      `  When:  ${MEETING_WHEN}\n` +
+      `  Where: ${MEETING_LINK}\n\n` +
+      `Just click the link above at the scheduled time to join — no download needed. ` +
+      `If you need to reschedule, reply to this email and I'll find another slot.\n\n` +
+      `Looking forward to it!\n\n— Your Networking Agent (on behalf of the founder)`,
+  };
 }
 
 async function recordToolCall(
@@ -204,7 +228,10 @@ export async function runAgentOnBounty(bounty: Bounty): Promise<void> {
         status: 402,
       });
       await sleep(250);
-      emit("payment", `Payment signed by agent wallet`, { toolName, agentWallet: agentAddr });
+      emit("payment", `Signing x402 payment from agent wallet`, {
+        toolName,
+        agentWallet: agentAddr,
+      });
 
       const result = await callPaidTool(toolName, payload, String(policy.maxPerRequestUsdc));
 
@@ -213,8 +240,9 @@ export async function runAgentOnBounty(bounty: Bounty): Promise<void> {
           requestPayload: payload,
           network: result.network,
         });
-        emit("error", `Tool ${toolName} failed: ${result.error ?? "unknown error"}`, { toolName });
-        throw new Error(`Tool ${toolName} failed: ${result.error}`);
+        const msg = `Tool ${toolName} failed: ${result.error ?? "unknown error"}`;
+        emit("error", msg, { toolName, error: result.error, details: result.data });
+        throw new ToolCallError(toolName, msg);
       }
 
       spent += price;
@@ -336,6 +364,33 @@ export async function runAgentOnBounty(bounty: Bounty): Promise<void> {
               firstMessage: r.transcriptPreview,
               simulated: r.simulated,
             });
+
+            // After the call connects, automatically send a meeting-confirmation
+            // email with the (demo) meeting link. Routed to DEMO_CONTACT_EMAIL
+            // when set. This is a free side-effect, not a paid x402 tool call.
+            const invite = meetingConfirmationEmail(c);
+            const confirm = await sendOutreachEmail({
+              to: c.email,
+              subject: invite.subject,
+              body: invite.body,
+            });
+            if (confirm.ok) {
+              if (!channels.includes("email")) channels.push("email");
+              emit("output", `Meeting confirmation emailed to ${confirm.to}${confirm.simulated ? " (sim)" : ""}`, {
+                contact: c.name,
+                to: confirm.to,
+                subject: invite.subject,
+                preview: invite.body,
+                meetingLink: MEETING_LINK,
+                simulated: confirm.simulated,
+              });
+            } else {
+              emit("error", `Couldn't send meeting confirmation to ${confirm.to}: ${confirm.error ?? "unknown"}`, {
+                contact: c.name,
+                to: confirm.to,
+                error: confirm.error,
+              });
+            }
           } else {
             // The call could not connect. The seller refunds the x402 charge,
             // so reverse the local spend accounting and drop the tool call from
@@ -422,7 +477,9 @@ export async function runAgentOnBounty(bounty: Bounty): Promise<void> {
     bounty.status = "open";
     bounty.updatedAt = nowIso();
     db.saveBounty(bounty);
-    emit("error", err instanceof Error ? err.message : "Agent run failed");
+    if (!(err instanceof ToolCallError)) {
+      emit("error", err instanceof Error ? err.message : "Agent run failed");
+    }
     emit("done", "Agent run failed", { failed: true });
   }
 }

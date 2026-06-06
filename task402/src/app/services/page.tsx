@@ -59,7 +59,7 @@ export default function ServicesPage() {
         ))}
       </div>
 
-      <div className="panel mt-10 p-6 text-sm text-[var(--muted)]">
+      <div id="how-agents-pay" className="panel mt-10 p-6 text-sm text-[var(--muted)]">
         <strong className="text-[var(--text)]">How agents pay</strong>
         <p className="mt-2">
           Your networking agent calls these endpoints during a task. Each tool

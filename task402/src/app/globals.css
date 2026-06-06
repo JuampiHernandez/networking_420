@@ -193,3 +193,55 @@ body {
     opacity: 0.3;
   }
 }
+
+.landing-grid {
+  background-image:
+    linear-gradient(rgba(29, 39, 64, 0.35) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(29, 39, 64, 0.35) 1px, transparent 1px);
+  background-size: 48px 48px;
+  mask-image: radial-gradient(ellipse 80% 70% at 50% 0%, black 20%, transparent 75%);
+}
+
+.glow-ring {
+  position: absolute;
+  border-radius: 9999px;
+  filter: blur(80px);
+  pointer-events: none;
+}
+
+@keyframes float {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-6px);
+  }
+}
+.float-slow {
+  animation: float 5s ease-in-out infinite;
+}
+
+.trusted-strip {
+  border-top: 1px solid var(--border-soft);
+  border-bottom: 1px solid var(--border-soft);
+  background: rgba(11, 15, 23, 0.6);
+}
+
+.dashboard-preview {
+  position: relative;
+}
+.dashboard-preview::before {
+  content: "";
+  position: absolute;
+  inset: -1px;
+  border-radius: 18px;
+  background: linear-gradient(135deg, rgba(59, 130, 246, 0.25), rgba(34, 211, 238, 0.1));
+  z-index: -1;
+  filter: blur(1px);
+}
+
+.live-ticker {
+  border-top: 1px solid var(--border-soft);
+  padding-top: 1rem;
+}

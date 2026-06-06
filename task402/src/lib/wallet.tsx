@@ -296,7 +296,9 @@ function DemoWalletProvider({ children }: { children: React.ReactNode }) {
   const [authenticated, setAuthenticated] = useState(false);
 
   useEffect(() => {
-    const saved = localStorage.getItem("task402_demo_wallet");
+    const saved =
+      localStorage.getItem("relay_demo_wallet") ??
+      localStorage.getItem("task402_demo_wallet");
     if (saved) {
       setAddress(saved);
       setAuthenticated(true);
@@ -309,12 +311,13 @@ function DemoWalletProvider({ children }: { children: React.ReactNode }) {
       Array.from({ length: 40 }, () =>
         Math.floor(Math.random() * 16).toString(16),
       ).join("");
-    localStorage.setItem("task402_demo_wallet", hex);
+    localStorage.setItem("relay_demo_wallet", hex);
     setAddress(hex);
     setAuthenticated(true);
   }, []);
 
   const logout = useCallback(() => {
+    localStorage.removeItem("relay_demo_wallet");
     localStorage.removeItem("task402_demo_wallet");
     setAddress(undefined);
     setAuthenticated(false);
@@ -326,7 +329,7 @@ function DemoWalletProvider({ children }: { children: React.ReactNode }) {
       ready: true,
       authenticated,
       address,
-      email: authenticated ? "demo@task402.dev" : undefined,
+      email: authenticated ? "demo@relay.dev" : undefined,
       usdcBalance: authenticated ? "1000.00" : undefined,
       login,
       logout,

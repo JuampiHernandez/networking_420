@@ -52,7 +52,11 @@ export function createPaidRoute(tool: ToolDef, produce: Produce) {
       {
         price: tool.priceLabel,
         network: X402_NETWORK,
-        config: { description: tool.description },
+        config: {
+          description: tool.description,
+          // Pin the resource URL so facilitator verification matches the buyer.
+          resource: serverConfig.appUrl + tool.endpoint,
+        },
       },
       { url: serverConfig.facilitatorUrl as `${string}://${string}` },
     );
@@ -229,7 +233,7 @@ export function toolLandingResponse(toolId: string): NextResponse {
       <p class="muted">An agent signs a USDC payment authorization for this challenge, the facilitator settles it on Base Sepolia, then the same request is retried and the resource unlocks. No API keys, no subscription — pay per call.</p>
     </div>
 
-    <p class="muted">${svc ? `Full product page: <a href="${esc(serverConfig.appUrl)}/services/${esc(svc.slug)}">/services/${esc(svc.slug)}</a> · ` : ""}Powered by ${esc(svc?.poweredBy ?? "Task402")}.</p>
+    <p class="muted">${svc ? `Full product page: <a href="${esc(serverConfig.appUrl)}/services/${esc(svc.slug)}">/services/${esc(svc.slug)}</a> · ` : ""}Powered by ${esc(svc?.poweredBy ?? "Relay")}.</p>
   </div>
 </body>
 </html>`;

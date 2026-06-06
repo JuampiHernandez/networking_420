@@ -66,6 +66,7 @@ export default function BountyDetailPage() {
   const [busy, setBusy] = useState<string>();
   const [actionError, setActionError] = useState<string>();
   const esRef = useRef<EventSource | null>(null);
+  const runInFlightRef = useRef(false);
 
   // Pure dedup (no external ref mutation) so React strict-mode double-invokes
   // of the updater stay correct.
@@ -121,6 +122,13 @@ export default function BountyDetailPage() {
   }, [id, mergeEvents, loadView]);
 
   useEffect(() => {
+    if (view?.bounty?.status === "running" && view?.run?.status === "running") {
+      setRunning(true);
+      startStream();
+    }
+  }, [view?.bounty?.status, view?.run?.status, startStream]);
+
+  useEffect(() => {
     return () => {
       esRef.current?.close();
       esRef.current = null;
@@ -157,6 +165,8 @@ export default function BountyDetailPage() {
   };
 
   const run = async () => {
+    if (runInFlightRef.current || running) return;
+    runInFlightRef.current = true;
     setBusy("run");
     setRunning(true);
     setActionError(undefined);
@@ -168,11 +178,15 @@ export default function BountyDetailPage() {
         setActionError(data?.error ?? `Could not start agent (HTTP ${res.status})`);
         return;
       }
+      setView((v) =>
+        v ? { ...v, bounty: { ...v.bounty, status: "running" } } : v,
+      );
       startStream();
     } catch (err) {
       setRunning(false);
       setActionError(err instanceof Error ? err.message : "Could not start agent");
     } finally {
+      runInFlightRef.current = false;
       setBusy(undefined);
     }
   };
@@ -209,7 +223,7 @@ export default function BountyDetailPage() {
   }
 
   const canFund = b.status === "funding_required";
-  const canRun = b.status === "open" || b.status === "rejected";
+  const canRun = (b.status === "open" || b.status === "rejected") && !running;
   const canDecide =
     b.status === "submitted" || b.status === "verification_pending";
   const toolSpend = view?.run?.totalToolSpendUsdc ?? "0";
@@ -243,7 +257,11 @@ export default function BountyDetailPage() {
             </button>
           )}
           {canRun && (
-            <button className="btn btn-primary" onClick={run} disabled={busy === "run"}>
+            <button
+              className="btn btn-primary"
+              onClick={run}
+              disabled={busy === "run" || running}
+            >
               {busy === "run" ? "Starting…" : "Run agent ▶"}
             </button>
           )}
